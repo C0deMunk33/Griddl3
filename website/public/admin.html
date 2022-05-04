@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>Sacrificial Pancakes - Admin</title>
+    <style media="screen">
+      #main {
+        display: none;
+      }
+      #connect_button {
+        display: none;
+      }
+      .thumbnail{
+        max-width: 150px;
+      }
+    </style>
+  </head>
+  <body>
+    <button onclick="connect()" id="connect_button">connect</button>
+    <div id="main">
+      <div id="lists">
+        <h4>Masters</h4>
+        <ul id="masters_list">
+
+        </ul>
+        <h4>Retired Masters</h4>
+        <ul id="retired_masters_list">
+
+        </ul>
+        <h4>Sales</h4>
+        <ul id="sales_list">
+
+        </ul>
+      </div>
+
+      <div id="create_master_div">
+        <h4>Create Master</h4>
+        <table>
+          <tbody>
+            <tr>
+              <td>ipfs_cid</td>
+              <td><input id="create_master_ipfs_cid" /></td>
+            </tr>
+            <tr>
+              <td>token_id</td>
+              <td><input id="create_master_results" /></td>
+            </tr>
+            <tr>
+              <td></td>
+              <td>  <button onclick="create_master()">Create Master</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <br>
+      <div id="kill_master">
+        <h4>Kill Master</h4>
+        <table>
+          <tbody>
+            <tr>
+              <td>master_id</td>
+              <td><input id="kill_master_id"></td>
+            </tr>
+            <tr>
+              <td></td>
+              <td><button onclick="kill_master()">Kill Master</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <br>
+      <div id="create_sale">
+        <h4>Create Sale</h4>
+        <table>
+          <tbody>
+            <tr>
+              <td>sale name</td>
+              <td><input id="create_sale_name"></td>
+            </tr>
+            <tr>
+              <td>master_ids</td>
+              <td><input id="create_sale_master_ids" /></td>
+            </tr>
+            <tr>
+              <td>amounts</td>
+              <td><input id="create_sale_amounts" /></td>
+            </tr>
+            <tr>
+              <td>price</td>
+              <td><input id="create_sale_price" /></td>
+            </tr>
+            <tr>
+              <td>limit</td>
+              <td><input id="create_sale_limit" /></td>
+            </tr>
+            <tr>
+              <td>results</td>
+              <td><textarea id="create_sale_results" rows="8" cols="80"></textarea></td>
+            </tr>
+            <tr>
+              <td></td>
+              <td><button onclick="create_sale()">Create Sale</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <br>
+      <div id="end_sale">
+        <h4>End Sale</h4>
+        <table>
+          <tbody>
+            <tr>
+              <td>sale_id</td>
+              <td><input id="end_sale_id"></td>
+            </tr>
+            <tr>
+              <td></td>
+              <td><button onclick="end_sale()">End Sale</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="gift_promo">
+        <h4>Gift Promo</h4>
+        <table>
+          <tbody>
+            <tr>
+              <td>master_id</td>
+              <td><input id="gift_promo_master_id"></td>
+            </tr>
+            <tr>
+              <td>target</td>
+              <td><input id="gift_promo_target"></td>
+            </tr>
+            <tr>
+              <td></td>
+              <td><button onclick="gift_promo()">Gift Promo</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="transfer_tokens">
+        <h4>Transfer Tokens</h4>
+        <table>
+          <tbody>
+            <tr>
+              <td>target</td>
+              <td><input id="transfer_tokens_target"></td>
+            </tr>
+            <tr>
+              <td>token_id</td>
+              <td><input id="transfer_tokens_token_id"></td>
+            </tr>
+            <tr>
+              <td>amount</td>
+              <td><input id="transfer_tokens_amount"></td>
+            </tr>
+            <tr>
+              <td></td>
+              <td><button onclick="transfer_tokens()">Transfer Tokens</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <script src="web3.min.js">
+
+    </script>
+    <script type="text/javascript">
+
+    let get_JSON_async = async function(url){
+      return new Promise((resolve, reject) => {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.responseType = 'json';
+
+        xhr.onload = function() {
+
+          var status = xhr.status;
+
+          if (status == 200) {
+            resolve(xhr.response)
+          } else {
+            reject(status)
+          }
+        };
+
+        xhr.send();
+      });
+    }
+    let music_core_instance;
+    let music_core_details;
+    let web3_instance;
+    window.onload = async (e) =>{
+      music_core_details = await get_JSON_async("/music_core_details.json")
+      document.getElementById("connect_button").style.display = "inline-block";
+    }
+
+    function get_array_from_text(text){
+      return text.substring(1, text.length -1).split(",")
+    }
+    async function connect(){
+      //web3 connect
+      accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      //document.getElementById("address").innerHTML = accounts[0];
+      web3_instance = new Web3(window.ethereum)
+      document.getElementById("connect_button").style.display = "none";
+      document.getElementById("main").style.display = "block";
+      init();
+    }
+
+    async function create_master(){
+      let ipfs_cid = document.getElementById("create_master_ipfs_cid").value;
+      let create_master_receipt = await music_core_instance.methods.create_master(ipfs_cid).send({from:accounts[0]})
+      console.log(create_master_receipt)
+      let token_id = create_master_receipt.events.Master_Created.returnValues.token_id;
+
+      document.getElementById("create_master_results").value = token_id.toString()
+
+    }
+    async function kill_master(){
+      let master_id = document.getElementById("kill_master_id").value
+      await music_core_instance.methods.kill_master(master_id).send({from: accounts[0]});
+      alert("master: " + master_id + " killed")
+      document.getElementById("kill_master_id").value = "";
+
+    }
+    async function create_sale(){
+      let master_ids = document.getElementById("create_sale_master_ids").value
+      let amounts = document.getElementById("create_sale_amounts").value
+      let price = document.getElementById("create_sale_price").value
+      let limit = document.getElementById("create_sale_limit").value
+      let sale_name = document.getElementById("create_sale_name").value
+      let create_sale_receipt = await music_core_instance.methods.create_sale(sale_name, get_array_from_text(master_ids), get_array_from_text(amounts), price, limit).send({from:accounts[0]})
+      let sale_id = create_sale_receipt.events.Sale_Created.returnValues.sale_id
+      document.getElementById("create_sale_results").value = sale_id.toString()
+
+
+    }
+    async function end_sale(){
+      let sale_id = document.getElementById("end_sale_id").value
+      await music_core_instance.methods.stop_sale(sale_id).send({from:accounts[0]})
+
+      alert("sale ended")
+    }
+    async function gift_promo(){
+      let master_id = document.getElementById("gift_promo_master_id").value;
+      let target = document.getElementById("gift_promo_target").value;
+      await music_core_instance.methods.gift_promo(target, master_id).send({from:accounts[0]})
+      alert("promo gifted");
+    }
+    async function transfer_tokens(){
+      let token_id = document.getElementById("transfer_tokens_token_id").value
+      let target = document.getElementById("transfer_tokens_target").value
+      let amount = document.getElementById("transfer_tokens_amount").value
+
+      await music_core_instance.methods.safeTransferFrom(accounts[0], target, token_id, amount, "0x00").send({from: accounts[0]})
+      alert("tokens transferred")
+    }
+
+    let alive_masters = [];
+    let alive_masters_map = {};
+    let dead_masters = [];
+    let dead_masters_map = {};
+    let live_sales = [];
+    let live_sales_map = {};
+
+
+    let masters = [];
+
+    async function init(){
+      masters= []
+      music_core_instance = new web3_instance.eth.Contract(music_core_details.abi, music_core_details.address, {from:accounts[0], gas: "500000"})
+
+
+      let master_created_events = await music_core_instance.getPastEvents("Master_Created", {
+        fromBlock:0,
+        toBlock:"latest"
+      });
+
+
+
+      let sale_created_events = await music_core_instance.getPastEvents("Sale_Created", {
+        fromBlock:0,
+        toBlock:"latest"
+      });
+
+
+      let sales_list = document.getElementById("sales_list");
+      let masters_list = document.getElementById("masters_list")
+      let retired_masters_list = document.getElementById("retired_masters_list")
+
+      // MASTERS
+      for(let master_idx =0; master_idx < master_created_events.length; master_idx++){
+        let token_id = master_created_events[master_idx].returnValues.token_id
+
+        let master = await music_core_instance.methods.get_master(token_id).call();
+
+        console.log("!!!!!!!!!!!!!!")
+        //get thumbnail from server based on ipfs_cid
+        let metadata = await get_JSON_async("/tokens/" + master.ipfs_cid )
+
+
+
+        let complete_master = {
+          master_details: master,
+          metadata: metadata
+        }
+
+        masters.push(complete_master)
+
+        if(master.live){
+          alive_masters.push(token_id)
+          alive_masters_map[token_id] = complete_master
+          // add to top of list
+          let li = document.createElement("li");
+          li.innerHTML = "<img class='thumbnail' src='/tokens/"+master.ipfs_cid+"/"+metadata.thumbnail+"' alt='"+ metadata.name+" thumbnail'>" +
+          "<p>"+metadata.name+"</p>" +
+          "<p>"+token_id+"<p>"
+          // TODO add stats
+          masters_list.prepend(li)
+        } else {
+          dead_masters.push(token_id)
+          dead_masters_map[token_id] = complete_master;
+          // add to top of list
+          let li = document.createElement("li");
+          li.innerHTML = "<img class='thumbnail' src='/tokens/"+master.ipfs_cid+"/"+metadata.thumbnail+"' alt='"+ metadata.name+" thumbnail'>" +
+          "<p>"+metadata.name+"</p>" +
+          "<p>"+token_id+"<p>"
+          retired_masters_list.prepend(li)
+        }
+      }
+
+
+      // SALES
+      for(let sale_idx = 0; sale_idx < sale_created_events.length;sale_idx++){
+        let sale_id = sale_created_events[sale_idx].returnValues.sale_id;
+        let sale = await music_core_instance.methods.get_sale(sale_id).call();
+
+        let sale_res = {
+          name: sale_created_events[sale_idx].returnValues.name,
+          token_ids: sale.token_ids,
+          amounts:sale.amounts,
+          price:sale.price,
+          limit:sale.limit,
+          manager:sale.manager
+
+        }
+
+        if(sale.limit !== "0"){
+          live_sales.push(sale_id);
+          live_sales_map[sale_id] = sale_res;
+          //add to top of list
+          let li = document.createElement("li");
+          li.innerHTML = "<span>" + sale_created_events[sale_idx].returnValues.name + "</span>" +
+          "<p>"+ sale_id+"</p>" +
+          "<p>Token ids:</p>" +
+          "<p>" + sale.token_ids + "</p>"
+          // todo add more details
+          sales_list.prepend(li)
+        }
+      }
+      //get sale events
+      //get stop_sale events
+      // list sales not stopped
+      //music_core_instance.
+    }
+
+    </script>
+  </body>
+</html>

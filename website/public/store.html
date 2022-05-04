@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>Sacrificial Pancakes - Store</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style media="screen">
+      #main {
+        display: none;
+      }
+      #connect_button {
+        display: none;
+        text-align: center;
+      }
+
+
+          body{
+            background-color: black;
+            color:white;
+            font-family: 'Share Tech Mono', monospace;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+          }
+      .store_item{
+        text-align: center;
+        display: inline-block;
+        padding:1%;
+        max-width: 15%;
+        min-width: 100px;
+        margin: 2%;
+        background-color: white;
+        color:black;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Sacrificial Pancakes - Store</h1>
+
+    <div id="connect_button">
+      <ul style="text-align:left;">
+        <li>You must be connected to Gnosis Chain (formerly xDai) to use this site.</li>
+        <li>You can either <a style="color:green;" href="https://www.xdaichain.com/for-users/wallets/metamask/metamask-setup">manually add Gnosis Chain to MetaMask</a> OR:</li>
+        <li>If you are not connected to Gnosis Chain, you will be promped to switch networks once you click 'connect' below.</li>
+      </ul>
+    <button onclick="connect()" >connect</button>
+    </div>
+
+    <div id="main">
+      <div>
+
+        <div id="sales_list">
+
+        </div>
+      </div>
+      <div>
+        <div id="discography_list">
+
+        </div>
+      </div>
+    </div>
+    <script src="web3.min.js">
+
+    </script>
+    <script type="text/javascript">
+    let get_JSON_async = async function(url){
+      return new Promise((resolve, reject) => {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.responseType = 'json';
+
+        xhr.onload = function() {
+
+          var status = xhr.status;
+
+          if (status == 200) {
+            resolve(xhr.response)
+          } else {
+            reject(status)
+          }
+        };
+
+        xhr.send();
+      });
+    }
+
+    let music_core_instance;
+    let music_core_details;
+    let web3_instance;
+    window.onload = async (e) =>{
+      music_core_details = await get_JSON_async("/music_core_details.json")
+      document.getElementById("connect_button").style.display = "inline-block";
+    }
+
+    async function connect(){
+
+      let networkData = [
+
+              {
+
+                chainId: "0x64",
+
+                chainName: "Gnosis Chain",
+
+                rpcUrls: ["https://rpc.gnosischain.com/"],
+
+                nativeCurrency: {
+
+                  name: "xDai",
+
+                  symbol: "xDai",
+
+                  decimals: 18,
+
+                },
+
+                blockExplorerUrls: ["https://blockscout.com/xdai/mainnet/"],
+
+              },
+
+            ];
+
+      await window.ethereum.request({
+          method: "wallet_addEthereumChain",
+          params: networkData
+        });
+
+      //web3 connect
+      accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      //document.getElementById("address").innerHTML = accounts[0];
+      web3_instance = new Web3(window.ethereum)
+      document.getElementById("connect_button").style.display = "none";
+      document.getElementById("main").style.display = "block";
+      init();
+    }
+
+
+    let masters = [];
+    let masters_map = {};
+    let live_sales = [];
+    let live_sales_map = {};
+
+    async function init(){
+      // create music_core_instance
+      music_core_instance = new web3_instance.eth.Contract(music_core_details.abi, music_core_details.address, {from:accounts[0]})
+
+      let master_created_events = await music_core_instance.getPastEvents("Master_Created", {
+        fromBlock:0,
+        toBlock:"latest"
+      });
+
+      let sale_created_events = await music_core_instance.getPastEvents("Sale_Created", {
+        fromBlock:0,
+        toBlock:"latest"
+      });
+
+      // MASTERS
+      let discography_list = document.getElementById("discography_list")
+      for(let master_idx =0; master_idx < master_created_events.length; master_idx++){
+        let token_id = master_created_events[master_idx].returnValues.token_id
+        let master = await music_core_instance.methods.get_master(token_id).call();
+        //get thumbnail from server based on ipfs_cid
+        let metadata = await get_JSON_async("/tokens/" + master.ipfs_cid )
+        let complete_master = {
+          master_details: master,
+          metadata: metadata
+        }
+        masters.push(token_id)
+        masters_map[token_id] = complete_master
+        //load Discography
+        let disco_item = document.createElement("div")
+        //thumbnail
+        let thumbnail = document.createElement("img")
+        thumbnail.style.maxWidth = "125px"
+        thumbnail.src ="/tokens/" +complete_master.master_details.ipfs_cid + "/"+ complete_master.metadata.thumbnail
+        disco_item.appendChild(thumbnail)
+
+        //name
+        let name = document.createElement("p")
+        name.innerText = complete_master.metadata.name
+        disco_item.appendChild(name)
+
+        //number owned
+        let owned = (await music_core_instance.methods.balanceOf(accounts[0],token_id).call()).toString()
+        let quantity = document.createElement ("span")
+        quantity.innerText = "Owned: " + owned
+        disco_item.appendChild(quantity)
+
+
+
+
+      }
+
+      // SALES
+      let sales_list = document.getElementById("sales_list")
+
+      for(let sale_idx = 0; sale_idx < sale_created_events.length;sale_idx++){
+        let sale_id = sale_created_events[sale_idx].returnValues.sale_id;
+        let sale = await music_core_instance.methods.get_sale(sale_id).call();
+
+        let sale_res = {
+          name: sale_created_events[sale_idx].returnValues.name,
+          token_ids: sale.token_ids,
+          amounts:sale.amounts,
+          price:sale.price,
+          limit:sale.limit,
+          manager:sale.manager
+        }
+        if(sale.limit !== "0"){
+          live_sales.push(sale_id);
+          live_sales_map[sale_id] = sale_res;
+          // load sales
+          let sale_div = document.createElement("div")
+          sale_div.className = "store_item"
+          let sale_label = document.createElement("p")
+          sale_label.innerText = sale_res.name
+          sale_div.appendChild(sale_label)
+          // price
+          let sale_price = document.createElement("div")
+          sale_price.innerHTML = web3_instance.utils.fromWei( sale_res.price.toString()) +" xDai"
+          sale_div.appendChild(sale_price)
+          let sale_contents_label = document.createElement("p")
+          sale_contents_label.innerText = "Contents:"
+          sale_div.appendChild(sale_contents_label)
+          let sale_contents = document.createElement("div")
+          sale_div.appendChild(sale_contents)
+
+          let token_balances = await music_core_instance.methods.balanceOfBatch_single_user(accounts[0], sale_res.token_ids ).call()
+          // details
+          // foreach id in sale_res.token_ids
+          for(let token_idx = 0; token_idx < sale_res.token_ids.length; token_idx++){
+            // load thumbnail and name
+
+
+            let master_div = document.createElement("div")
+
+            let thumbnail = document.createElement("img")
+            thumbnail.style.maxWidth = "125px"
+            thumbnail.src ="/tokens/" +masters_map[sale_res.token_ids[token_idx]].master_details.ipfs_cid + "/"+ masters_map[sale_res.token_ids[token_idx]].metadata.thumbnail
+            let name = document.createElement("p")
+            name.innerText = masters_map[sale_res.token_ids[token_idx]].metadata.name
+
+
+            master_div.appendChild(thumbnail)
+            master_div.appendChild(name)
+
+            sale_contents.appendChild(master_div)
+
+          }
+          let buy_button = document.createElement("button")
+
+          buy_button.innerText = "buy now ("+web3_instance.utils.fromWei( sale_res.price.toString()) +" xDai)"
+          buy_button.onclick =async () =>{
+
+            buy_button.style.display = "none"
+            try {
+              await music_core_instance.methods.buy(sale_id).send({
+                from:accounts[0],
+                value: sale_res.price
+              })
+
+              alert("done")
+            } catch (ex){
+              console.log(ex)
+              alert("error " + ex.message)
+
+            }
+
+            buy_button.style.display = "inline"
+          }
+          sale_div.appendChild(buy_button)
+          sales_list.appendChild(sale_div)
+        }
+      }
+    }
+    </script>
+  </body>
+</html>
